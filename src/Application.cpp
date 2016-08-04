@@ -18,75 +18,6 @@ const std::vector<const char*> deviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
-VkResult CreateDebugReportCallbackEXT(VkInstance instance,
-                                      const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
-                                      const VkAllocationCallbacks* pAllocator,
-                                      VkDebugReportCallbackEXT* pCallback) {
-    auto func = (PFN_vkCreateDebugReportCallbackEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
-    if (func != nullptr) {
-        return func(instance, pCreateInfo, pAllocator, pCallback);
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
-
-void DestroyDebugReportCallbackEXT(VkInstance instance,
-                                   VkDebugReportCallbackEXT callback,
-                                   const VkAllocationCallbacks* pAllocator) {
-    auto func = (PFN_vkDestroyDebugReportCallbackEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT");
-    if (func != nullptr) {
-        func(instance, callback, pAllocator);
-    }
-}
-
-std::vector<const char*> getRequiredExtensions() {
-    std::vector<const char*> extensions;
-
-    unsigned int glfwExtensionCount = 0;
-    const char** glfwExtensions;
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    for (unsigned int i = 0; i < glfwExtensionCount; i++) {
-        extensions.push_back(glfwExtensions[i]);
-    }
-
-#ifdef ENABLE_VALIDATION_LAYERS
-    extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-#endif
-
-    return extensions;
-}
-
-bool checkValidationLayerSupport() {
-    uint32_t layerCount;
-    if(vkEnumerateInstanceLayerProperties(&layerCount, nullptr) != VK_SUCCESS){
-        throw std::runtime_error("VK : vkEnumerateInstanceLayerProperties error");
-    }
-
-    if(layerCount == 0){
-        throw std::runtime_error("Failed to find any layer in your system.");
-    }
-
-    std::vector<VkLayerProperties> availableLayers(layerCount);
-    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-    for (const char* layerName : validationLayers) {
-        bool layerFound = false;
-        for (const auto& layerProperties : availableLayers) {
-            if (strcmp(layerName, layerProperties.layerName) == 0) {
-                layerFound = true;
-                break;
-            }
-        }
-
-        if (!layerFound) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 VkBool32 debugCallback(VkDebugReportFlagsEXT flags,
                        VkDebugReportObjectTypeEXT objType,
                        uint64_t obj,
@@ -100,32 +31,18 @@ VkBool32 debugCallback(VkDebugReportFlagsEXT flags,
     return VK_FALSE;
 }
 
-QueueFamilyIndices Application::findQueueFamilies(VkPhysicalDevice device) {
-    QueueFamilyIndices indices;
+bool Application::isDeviceSuitable(VkPhysicalDevice device,VkSurfaceKHR surface) {
+    vk_helper::QueueFamilyIndices indices = vk_helper::findQueueFamilies(device,surface);
 
-    uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(device,&queueFamilyCount, nullptr);
-    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(device,&queueFamilyCount,queueFamilies.data());
+    bool extensionsSupported = vk_helper::getDeviceExtension(device,deviceExtensions).empty();
 
-    int i = 0;
-    for (const auto& queueFamily : queueFamilies) {
-        if(queueFamily.queueCount>0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT){
-            indices.graphicsFamily = i;
-        }
-        VkBool32 presentSupport = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(device,i,_surface,&presentSupport);
-        if(presentSupport && queueFamily.queueCount>0){
-            indices.presentFamily = i;
-        }
-        if(indices.isComplete()) {
-            break;
-        }
-
-        i++;
+    bool swapChainAdequate = false;
+    if (extensionsSupported) {
+        vk_helper::SwapChainSupportDetails swapChainSupport = vk_helper::querySwapChainSupport(device,_surface);
+        swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
     }
 
-    return indices;
+    return indices.isComplete() && extensionsSupported;// && swapChainAdequate;
 }
 
 void Application::run() {
@@ -144,7 +61,7 @@ void Application::initWindow() {
 void Application::initVulkan() {
 
 #ifdef ENABLE_VALIDATION_LAYERS
-    if (!checkValidationLayerSupport()) {
+    if (!vk_helper::checkValidationLayerSupport(validationLayers)) {
         throw std::runtime_error("validation layers requested, but not available!");
     }
 #endif
@@ -163,13 +80,15 @@ void Application::initVulkan() {
     debugCreateInfoEXT.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT;
     debugCreateInfoEXT.pfnCallback = (PFN_vkDebugReportCallbackEXT) debugCallback;
 
-    if (CreateDebugReportCallbackEXT(_instance, &debugCreateInfoEXT, nullptr, &_callback) != VK_SUCCESS) {
+    if (vk_helper::createDebugReportCallbackEXT(_instance, &debugCreateInfoEXT, nullptr, &_callback) != VK_SUCCESS) {
         throw std::runtime_error("failed to set up debug callback!\n");
     }
 #endif
 
     createLogicalDevice();
-
+    createSwapChain();
+    createImageViews();
+    createGraphicsPipeline();
 }
 
 void Application::createInstance() {
@@ -185,7 +104,7 @@ void Application::createInstance() {
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceCreateInfo.pApplicationInfo = &appInfo;
 
-    auto extensions = getRequiredExtensions();
+    auto extensions = vk_helper::getRequiredExtensions();
     instanceCreateInfo.enabledExtensionCount = extensions.size();
     instanceCreateInfo.ppEnabledExtensionNames = extensions.data();
 
@@ -211,10 +130,9 @@ void Application::createLogicalDevice() {
     std::vector<VkPhysicalDevice> devices(deviceCount);
     vkEnumeratePhysicalDevices(_instance,&deviceCount,devices.data());
 
-    QueueFamilyIndices indices = {};
+
     for (const auto& device : devices) {
-        indices = findQueueFamilies(device);
-        if(indices.isComplete()){
+        if(isDeviceSuitable(device,_surface)){
             physicalDevice = device;
             break;
         }
@@ -232,6 +150,7 @@ void Application::createLogicalDevice() {
 
     //create logical device
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+    vk_helper::QueueFamilyIndices indices = vk_helper::findQueueFamilies(physicalDevice,_surface);
     std::set<int> uniqueQueueFamilies = {indices.graphicsFamily, indices.presentFamily};
 
     for (int queueFamily : uniqueQueueFamilies) {
@@ -257,6 +176,9 @@ void Application::createLogicalDevice() {
 
     deviceCreateInfo.enabledExtensionCount = 0;
 
+    deviceCreateInfo.enabledExtensionCount = deviceExtensions.size();
+    deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
+
 #ifdef ENABLE_VALIDATION_LAYERS
     deviceCreateInfo.enabledLayerCount = validationLayers.size();
     deviceCreateInfo.ppEnabledLayerNames = validationLayers.data();
@@ -273,7 +195,102 @@ void Application::createLogicalDevice() {
 }
 
 void Application::createSwapChain() {
+    vk_helper::SwapChainSupportDetails swapChainSupport = vk_helper::querySwapChainSupport(physicalDevice,_surface);
 
+    VkSurfaceFormatKHR surfaceFormat = vk_helper::chooseSwapSurfaceFormat(swapChainSupport.formats);
+    VkPresentModeKHR presentMode = vk_helper::chooseSwapPresentMode(swapChainSupport.presentModes);
+    VkExtent2D extent = vk_helper::chooseSwapExtent(swapChainSupport.capabilities,WINDOW_WIDTH,WINDOW_HEIGHT);
+
+    uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+    if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
+        imageCount = swapChainSupport.capabilities.maxImageCount;
+    }
+
+    VkSwapchainCreateInfoKHR createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfo.surface = _surface;
+
+    createInfo.minImageCount = imageCount;
+    createInfo.imageFormat = surfaceFormat.format;
+    createInfo.imageColorSpace = surfaceFormat.colorSpace;
+    createInfo.imageExtent = extent;
+    createInfo.imageArrayLayers = 1;
+    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    vk_helper::QueueFamilyIndices indices = vk_helper::findQueueFamilies(physicalDevice,_surface);
+    uint32_t queueFamilyIndices[] = {(uint32_t) indices.graphicsFamily, (uint32_t) indices.presentFamily};
+
+    if (indices.graphicsFamily != indices.presentFamily) {
+        createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        createInfo.queueFamilyIndexCount = 2;
+        createInfo.pQueueFamilyIndices = queueFamilyIndices;
+    } else {
+        createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    }
+
+    createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
+    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    createInfo.presentMode = presentMode;
+    createInfo.clipped = VK_TRUE;
+
+    createInfo.oldSwapchain = VK_NULL_HANDLE;
+
+    if (vkCreateSwapchainKHR(_device, &createInfo, nullptr, &_swapChain) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create swap chain!");
+    }
+
+    vkGetSwapchainImagesKHR(_device, _swapChain, &imageCount, nullptr);
+    _swapChainImages.resize(imageCount);
+    vkGetSwapchainImagesKHR(_device, _swapChain, &imageCount, _swapChainImages.data());
+
+    _swapChainImageFormat = surfaceFormat.format;
+    _swapChainExtent = extent;
+}
+
+void Application::createImageViews() {
+    _swapChainImageViews.resize(_swapChainImages.size(), VDeleter<VkImageView>{_device, vkDestroyImageView});
+
+    for (uint32_t i = 0; i < _swapChainImages.size(); i++) {
+        VkImageViewCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfo.image = _swapChainImages[i];
+        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        createInfo.format = _swapChainImageFormat;
+        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfo.subresourceRange.baseMipLevel = 0;
+        createInfo.subresourceRange.levelCount = 1;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.layerCount = 1;
+
+        if (vkCreateImageView(_device, &createInfo, nullptr, &_swapChainImageViews[i]) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create image views!");
+        }
+    }
+}
+
+void Application::createGraphicsPipeline() {
+    VDeleter<VkShaderModule> vertShaderModule{_device, vkDestroyShaderModule};
+    VDeleter<VkShaderModule> fragShaderModule{_device, vkDestroyShaderModule};
+    vk_helper::createShaderModule("/home/ld016/web-app/vk_render/src/shader/vert.spv", &vertShaderModule,_device);
+    vk_helper::createShaderModule("/home/ld016/web-app/vk_render/src/shader/frag.spv", &fragShaderModule,_device);
+
+    VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
+    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertShaderStageInfo.module = vertShaderModule;
+    vertShaderStageInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
+    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragShaderStageInfo.module = fragShaderModule;
+    fragShaderStageInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 }
 
 void Application::mainLoop(){

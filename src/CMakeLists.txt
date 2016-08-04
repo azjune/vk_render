@@ -43,6 +43,6 @@ set(INCLUDES ${INCLUDES} ${GLM_INCLUDE_DIR})
 
 include_directories(${INCLUDES})
 ## Define the executable
-add_executable(${PROJECT_NAME} ${SRCS} main.cpp Application.cpp Application.h VDeleter.h)
+add_executable(${PROJECT_NAME} ${SRCS} main.cpp Application.cpp Application.h tools/VDeleter.h vk/vk_helper.cpp vk/vk_helper.h)
 # target_include_directories(${PROJECT_NAME} ${INCLUDES})
 target_link_libraries(${PROJECT_NAME} ${LIBS})

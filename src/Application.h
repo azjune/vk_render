@@ -6,32 +6,11 @@
 #define APP_APPLICATION_H
 
 #include <iostream>
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
 
-#include "VDeleter.h"
+#include "vk/vk_helper.h"
 
-#ifdef _DEBUG
-#define ENABLE_VALIDATION_LAYERS
-#endif
+#include "tools/VDeleter.h"
 
-
-VkResult CreateDebugReportCallbackEXT(VkInstance instance,
-                                      const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
-                                      const VkAllocationCallbacks* pAllocator,
-                                      VkDebugReportCallbackEXT* pCallback);
-void DestroyDebugReportCallbackEXT(VkInstance instance,
-                                   VkDebugReportCallbackEXT callback,
-                                   const VkAllocationCallbacks* pAllocator);
-
-struct QueueFamilyIndices {
-    int graphicsFamily = -1;
-    int presentFamily = -1;
-
-    bool isComplete() {
-        return graphicsFamily >= 0 && presentFamily >= 0;
-    }
-};
 
 class Application {
 public:
@@ -46,18 +25,27 @@ private:
     void createInstance();
     void createLogicalDevice();
     void createSwapChain();
+    void createImageViews();
+    void createGraphicsPipeline();
 
-    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+    bool isDeviceSuitable(VkPhysicalDevice device,VkSurfaceKHR surface);
 private:
     GLFWwindow* _window;
     VDeleter<VkInstance> _instance{vkDestroyInstance};
-    VDeleter<VkDebugReportCallbackEXT> _callback{_instance, DestroyDebugReportCallbackEXT};
+    VDeleter<VkDebugReportCallbackEXT> _callback{_instance, vk_helper::destroyDebugReportCallbackEXT};
     VDeleter<VkSurfaceKHR> _surface{_instance, vkDestroySurfaceKHR};
     VDeleter<VkDevice> _device{vkDestroyDevice};
 
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     VkQueue _graphicsQueue;
     VkQueue _presentQueue;
+
+    VDeleter<VkSwapchainKHR> _swapChain{_device, vkDestroySwapchainKHR};
+    std::vector<VkImage> _swapChainImages;
+    VkFormat _swapChainImageFormat;
+    VkExtent2D _swapChainExtent;
+
+    std::vector<VDeleter<VkImageView>> _swapChainImageViews;
 };
 
 #endif //APP_APPLICATION_H
