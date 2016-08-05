@@ -146,7 +146,7 @@ GLFWbool _glfwIsValidContextConfig(const _GLFWctxconfig* ctxconfig)
                 // and above
 
                 _glfwInputError(GLFW_INVALID_VALUE,
-                                "Context profiles are only defined for OpenGL version 3.2 and above");
+                                "vk_Context profiles are only defined for OpenGL version 3.2 and above");
                 return GLFW_FALSE;
             }
         }

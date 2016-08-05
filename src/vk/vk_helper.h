@@ -5,7 +5,7 @@
 #ifndef APP_VK_HELPER_H
 #define APP_VK_HELPER_H
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -30,13 +30,19 @@ namespace vk_helper{
         }
     };
 
+    const std::vector<const char*> validationLayers = {
+            "VK_LAYER_LUNARG_standard_validation"
+    };
+
+    const std::vector<const char*> deviceExtensions = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    };
+
     struct SwapChainSupportDetails {
         VkSurfaceCapabilitiesKHR capabilities;
         std::vector<VkSurfaceFormatKHR> formats;
         std::vector<VkPresentModeKHR> presentModes;
     };
-
-    std::vector<const char*> getRequiredExtensions();
 
 
     std::set<std::string> getDeviceExtension(VkPhysicalDevice device,const std::vector<const char*>& deviceExtensions);
@@ -57,15 +63,6 @@ namespace vk_helper{
     std::vector<char> readFile(const std::string& filename);
 
     void createShaderModule(const std::string& path, VkShaderModule* shaderModule,VkDevice device);
-
-    VkResult createDebugReportCallbackEXT(VkInstance instance,
-                                          const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
-                                          const VkAllocationCallbacks* pAllocator,
-                                          VkDebugReportCallbackEXT* pCallback);
-
-    void destroyDebugReportCallbackEXT(VkInstance instance,
-                                       VkDebugReportCallbackEXT callback,
-                                       const VkAllocationCallbacks* pAllocator);
 }
 
 

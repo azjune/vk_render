@@ -257,7 +257,7 @@ struct _GLFWwndconfig
 };
 
 
-/*! @brief Context configuration.
+/*! @brief vk_Context configuration.
  *
  *  Parameters relating to the creation of the context but not directly related
  *  to the framebuffer.  This is used to pass context creation parameters from
@@ -308,7 +308,7 @@ struct _GLFWfbconfig
 };
 
 
-/*! @brief Context structure.
+/*! @brief vk_Context structure.
  */
 struct _GLFWcontext
 {

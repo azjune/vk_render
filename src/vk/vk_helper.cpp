@@ -6,24 +6,6 @@
 
 using namespace vk_helper;
 
-std::vector<const char*> vk_helper::getRequiredExtensions() {
-    std::vector<const char*> extensions;
-
-    unsigned int glfwExtensionCount = 0;
-    const char** glfwExtensions;
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    for (unsigned int i = 0; i < glfwExtensionCount; i++) {
-        extensions.push_back(glfwExtensions[i]);
-    }
-
-#if ENABLE_VALIDATION_LAYERS
-    extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-#endif
-
-    return extensions;
-}
-
 std::set<std::string> vk_helper::getDeviceExtension(VkPhysicalDevice device,const std::vector<const char*>& deviceExtensions) {
     uint32_t extensionCount;
     vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
@@ -185,27 +167,5 @@ void vk_helper::createShaderModule(const std::string& path, VkShaderModule* shad
 
     if (vkCreateShaderModule(device, &createInfo, nullptr, shaderModule) != VK_SUCCESS) {
         throw std::runtime_error("failed to create shader module!");
-    }
-}
-
-
-VkResult vk_helper::createDebugReportCallbackEXT(VkInstance instance,
-                                      const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
-                                      const VkAllocationCallbacks* pAllocator,
-                                      VkDebugReportCallbackEXT* pCallback) {
-    auto func = (PFN_vkCreateDebugReportCallbackEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
-    if (func != nullptr) {
-        return func(instance, pCreateInfo, pAllocator, pCallback);
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
-
-void vk_helper::destroyDebugReportCallbackEXT(VkInstance instance,
-                                   VkDebugReportCallbackEXT callback,
-                                   const VkAllocationCallbacks* pAllocator) {
-    auto func = (PFN_vkDestroyDebugReportCallbackEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT");
-    if (func != nullptr) {
-        func(instance, callback, pAllocator);
     }
 }

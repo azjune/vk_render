@@ -505,7 +505,7 @@ GLFWbool _glfwCreateContextEGL(_GLFWwindow* window,
         setEGLattrib(EGL_NONE, EGL_NONE);
     }
 
-    // Context release behaviors (GL_KHR_context_flush_control) are not yet
+    // vk_Context release behaviors (GL_KHR_context_flush_control) are not yet
     // supported on EGL but are not a hard constraint, so ignore and continue
 
     window->context.egl.handle = eglCreateContext(_glfw.egl.display,

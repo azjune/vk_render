@@ -46,7 +46,7 @@ extern "C" {
  *
  *  For more information about how to use this file, see @ref build_include.
  */
-/*! @defgroup context Context reference
+/*! @defgroup context vk_Context reference
  *
  *  This is the reference documentation for OpenGL and OpenGL ES context related
  *  functions.  For more task-oriented information, see the @ref context_guide.

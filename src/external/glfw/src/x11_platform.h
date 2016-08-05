@@ -141,7 +141,7 @@ typedef struct _GLFWlibraryX11
 
     // Invisible cursor for hidden cursor mode
     Cursor          cursor;
-    // Context for mapping window XIDs to _GLFWwindow pointers
+    // vk_Context for mapping window XIDs to _GLFWwindow pointers
     XContext        context;
     // XIM input method
     XIM             im;
