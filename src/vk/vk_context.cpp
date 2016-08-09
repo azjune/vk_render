@@ -4,10 +4,10 @@
 
 #include "vk_context.h"
 
-vk_context::vk_context() {
-    _initConstance();
+vk_context::vk_context(vk_utils::vk_window* window) {
+    initConstance();
     _debug.init(instance);
-    _initDevice();
+    initDevice();
 }
 
 vk_context::~vk_context() {
@@ -16,7 +16,7 @@ vk_context::~vk_context() {
     vkDestroyInstance(instance, nullptr);
 }
 
-void vk_context::_initConstance() {
+void vk_context::initConstance() {
     VkApplicationInfo applicationInfo = {};
     {
         applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -51,19 +51,24 @@ void vk_context::_initConstance() {
     assert(instance);
 }
 
-void vk_context::_initDevice() {
+void vk_context::initSurface() {
+
+}
+
+void vk_context::initDevice() {
     {
         uint32_t physicalDeviceCount = 0;
         vkEnumeratePhysicalDevices(instance,&physicalDeviceCount, nullptr);
         std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
         vkEnumeratePhysicalDevices(instance,&physicalDeviceCount, physicalDevices.data());
         physicalDevice = physicalDevices[0];
+        VkBool32 isSuppored = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice,familyIndex,surface,&isSuppored);
     }
 
     VkPhysicalDeviceFeatures features;
     vkGetPhysicalDeviceFeatures(physicalDevice,&features);
 
-    uint32_t familyIndex = 0;
     {
         uint32_t deviceQueueFamilyPropertiesCount = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice,&deviceQueueFamilyPropertiesCount, nullptr);
@@ -85,17 +90,27 @@ void vk_context::_initDevice() {
         deviceQueueCreateInfo.queueFamilyIndex = familyIndex;
     }
 
+    std::vector<const char*> extensionNames = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    };
+
     VkDeviceCreateInfo deviceCreateInfo = {};
     {
         deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        deviceCreateInfo.pEnabledFeatures = &features;
-        deviceCreateInfo.queueCreateInfoCount = 1;
-        deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
-        deviceCreateInfo.enabledLayerCount = _debug.validationLayerNames.size();
-        deviceCreateInfo.ppEnabledLayerNames = _debug.validationLayerNames.data();
+        deviceCreateInfo.pEnabledFeatures           = &features;
+        deviceCreateInfo.queueCreateInfoCount       = 1;
+        deviceCreateInfo.pQueueCreateInfos          = &deviceQueueCreateInfo;
+        deviceCreateInfo.enabledLayerCount          = _debug.validationLayerNames.size();
+        deviceCreateInfo.ppEnabledLayerNames        = _debug.validationLayerNames.data();
+        deviceCreateInfo.enabledExtensionCount      = extensionNames.size();
+        deviceCreateInfo.ppEnabledExtensionNames    = extensionNames.data();
     }
 
     vkCreateDevice(physicalDevice,&deviceCreateInfo, nullptr,&device);
 
+    vkGetDeviceQueue(device,familyIndex,0,&graphicsQueue);
+
     assert(device);
+    assert(graphicsQueue);
 }
+

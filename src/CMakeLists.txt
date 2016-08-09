@@ -35,14 +35,15 @@ set(LIBS ${LIBS} glfw)
 ## glm
 set(INCLUDES ${INCLUDES} ${GLM_INCLUDE_DIR})
 
-#if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-#    find_package(X11 REQUIRED)
-#    set(INCLUDES ${INCLUDES} ${X11_INCLUDE_DIRS})
-#    set(LIBS ${LIBS} ${X11_LIBRARIES})
-#endif()
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    add_definitions(-DVK_USE_PLATFORM_XCB_KHR)
+    set(LIBS ${LIBS} xcb)
+elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
+    add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
+endif()
 
 include_directories(${INCLUDES})
 ## Define the executable
-add_executable(${PROJECT_NAME} ${SRCS} main.cpp Application.cpp Application.h vk/vk_context.cpp vk/vk_context.h vk/vk_debug.cpp vk/vk_debug.h)
+add_executable(${PROJECT_NAME} ${SRCS} main.cpp Application.cpp Application.h vk/vk_context.cpp vk/vk_context.h vk/vk_debug.cpp vk/vk_debug.h vk/vk_utils.h vk/vk_utils.cpp)
 # target_include_directories(${PROJECT_NAME} ${INCLUDES})
 target_link_libraries(${PROJECT_NAME} ${LIBS})
