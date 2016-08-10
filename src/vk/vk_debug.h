@@ -13,8 +13,6 @@ public:
     void init(VkInstance instance);
     void deInit();
 
-    std::vector<const char*> validationLayerNames = {"VK_LAYER_LUNARG_standard_validation"};
-
     static VkBool32 debugCallback(
             VkDebugReportFlagsEXT flags,
             VkDebugReportObjectTypeEXT objType,

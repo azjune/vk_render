@@ -14,22 +14,20 @@ public:
     vk_context(vk_utils::vk_window* window);
     ~vk_context();
 
-    void initConstance();
-    void initSurface();
-    void initDevice();
+    void init();
+    void destroy();
 
     VkInstance instance;
     VkPhysicalDevice physicalDevice;
     VkDevice device;
     VkQueue graphicsQueue;
     VkSurfaceKHR surface;
-
+    VkSwapchainKHR swapChain;
+    std::vector<VkImage> images;
     uint32_t familyIndex;
 private:
     vk_debug _debug;
-
-
-
+    vk_utils::vk_window * _window;
 };
 
 
