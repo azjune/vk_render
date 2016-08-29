@@ -7,6 +7,7 @@
 
 #include <vector>
 #include "v_platform.hpp"
+#include "v_window.h"
 
 class v_window;
 
@@ -19,21 +20,30 @@ public:
 
     bool run();
 
-    inline VkInstance getInstance(){
+    inline const VkInstance getInstance(){
         return _instance;
     }
 
-    inline VkPhysicalDevice getPhysicalDevice(){
+    inline const VkPhysicalDevice getPhysicalDevice(){
         return _gpu;
     }
 
-    inline uint32_t getGraphicsFamilyIndex(){
+    inline const uint32_t getGraphicsFamilyIndex(){
         return _graphics_family_index;
     }
 
-    inline VkDevice getDevice(){
+    inline const VkDevice getDevice(){
         return _device;
     }
+
+    inline const VkQueue getQueue(){
+        return _queue;
+    }
+
+    inline v_window* getWindow(){
+        return _window;
+    }
+
 private:
     void _initInstance();
     void _deInitInstance();

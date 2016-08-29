@@ -131,6 +131,8 @@ void v_renderer::_initDevice() {
         deviceCreateInfo.ppEnabledExtensionNames = extensions.data();
     }
     vkCreateDevice(_gpu,&deviceCreateInfo, nullptr,&_device);
+
+    vkGetDeviceQueue(_device,_graphics_family_index,0,&_queue);
 }
 
 void v_renderer::_deInitDevice() {
@@ -187,7 +189,7 @@ void v_renderer::_initDebug() {
         createInfoEXT.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
         createInfoEXT.pfnCallback = &debugCallback;
         createInfoEXT.flags =
-                VK_DEBUG_REPORT_INFORMATION_BIT_EXT |
+//                VK_DEBUG_REPORT_INFORMATION_BIT_EXT |
                 VK_DEBUG_REPORT_WARNING_BIT_EXT |
                 VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT |
                 VK_DEBUG_REPORT_ERROR_BIT_EXT |

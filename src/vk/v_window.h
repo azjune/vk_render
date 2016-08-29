@@ -18,6 +18,26 @@ public:
     void close();
     bool update();
 
+    inline const uint32_t getWidth(){
+        return _width;
+    }
+
+    inline const uint32_t getHeight(){
+        return _height;
+    }
+
+    inline const VkSurfaceFormatKHR getFormat(){
+        return _surface_format;
+    }
+
+    inline const std::vector<VkImageView>& getImageViews(){
+        return _swapchain_image_views;
+    }
+
+    inline const VkSwapchainKHR& getSwapchain(){
+        return _swapchain;
+    }
+
 private:
     void _initOSWindow();
     void _deInitOSWindow();
