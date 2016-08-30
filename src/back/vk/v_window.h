@@ -7,6 +7,7 @@
 
 #include "v_platform.hpp"
 #include <vector>
+#include <functional>
 
 class v_renderer;
 
@@ -38,6 +39,7 @@ public:
         return _swapchain;
     }
 
+    std::function<void(uint32_t,uint32_t)> onResize = nullptr;
 private:
     void _initOSWindow();
     void _deInitOSWindow();
@@ -49,8 +51,8 @@ private:
     void _initSwapchain();
     void _deInitSwapchain();
 
-    void _initSwapchainImages();
-    void _deInitSwapchainImages();
+    void _initSwapchainImageViews();
+    void _deInitSwapchainImageViews();
 
     v_renderer* _renderer;
 
@@ -61,7 +63,6 @@ private:
     std::vector<VkImageView> _swapchain_image_views;
 
     VkSurfaceFormatKHR _surface_format = {};
-    VkSurfaceCapabilitiesKHR _surface_capabilities = {};
     uint32_t _swapchain_image_count = 2;
 
     uint32_t _width = 512;

@@ -258,8 +258,39 @@ std::vector<VkCommandBuffer> createCommandBuffers(v_renderer& renderer, const Vk
     }
     std::vector<VkCommandBuffer> commandBuffers(framebuffers.size());
     vkAllocateCommandBuffers(renderer.getDevice(),&allocateInfo,commandBuffers.data());
-
     return commandBuffers;
+}
+
+void beginCommandBuffers(v_renderer& renderer,std::vector<VkCommandBuffer> commandBuffers,VkPipeline pipeline,VkRenderPass renderPass,std::vector<VkFramebuffer> frameBuffers){
+    for (auto i = 0;i<commandBuffers.size();i++) {
+
+        VkCommandBufferBeginInfo beginInfo = {};
+        {
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+            beginInfo.pInheritanceInfo = nullptr;
+        }
+        vkBeginCommandBuffer(commandBuffers[i],&beginInfo);
+
+        VkClearValue clearColor = {0.0f,0.0f,0.0f,1.0f};
+        VkRenderPassBeginInfo renderPassBeginInfo = {};
+        {
+            renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            renderPassBeginInfo.renderPass = renderPass;
+            renderPassBeginInfo.framebuffer = frameBuffers[i];
+            renderPassBeginInfo.clearValueCount = 1;
+            renderPassBeginInfo.pClearValues = &clearColor;
+            renderPassBeginInfo.renderArea.offset = {0,0};
+            renderPassBeginInfo.renderArea.extent = {renderer.getWindow()->getWidth(),renderer.getWindow()->getHeight()};
+        }
+        vkCmdBeginRenderPass(commandBuffers[i],&renderPassBeginInfo,VK_SUBPASS_CONTENTS_INLINE);
+
+        vkCmdBindPipeline(commandBuffers[i],VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline);
+        vkCmdDraw(commandBuffers[i],3,1,0,0);
+
+        vkCmdEndRenderPass(commandBuffers[i]);
+        vkEndCommandBuffer(commandBuffers[i]);
+    }
 }
 
 VkSemaphore createSemaphores(v_renderer& renderer){
@@ -329,35 +360,27 @@ int main(int argc,char* argv[]) {
     VkCommandPool commandPool = createCommandPool(renderer);
     auto commandBuffers = createCommandBuffers(renderer,commandPool,frameBuffers);
 
-    for (auto i = 0;i<commandBuffers.size();i++) {
+    beginCommandBuffers(renderer,commandBuffers,pipeline,renderPass,frameBuffers);
 
-        VkCommandBufferBeginInfo beginInfo = {};
-        {
-            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-            beginInfo.pInheritanceInfo = nullptr;
+    renderer.getWindow()->onResize = [&](uint32_t width,uint32_t height){
+        vkDestroyRenderPass(renderer.getDevice(),renderPass, nullptr);
+        renderPass = createRenderPass(renderer);
+
+        vkDestroyPipelineLayout(renderer.getDevice(),layout, nullptr);
+        layout = createPipelineLayout(renderer);
+
+        vkDestroyPipeline(renderer.getDevice(),pipeline, nullptr);
+        pipeline = createGraphicsPipeline(renderer,renderPass,layout,stages);
+
+        for (auto frameBuffer : frameBuffers) {
+            vkDestroyFramebuffer(renderer.getDevice(),frameBuffer, nullptr);
         }
-        vkBeginCommandBuffer(commandBuffers[i],&beginInfo);
+        frameBuffers = createFramebuffer(renderer,renderPass);
 
-        VkClearValue clearColor = {0.0f,0.0f,0.0f,1.0f};
-        VkRenderPassBeginInfo renderPassBeginInfo = {};
-        {
-            renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassBeginInfo.renderPass = renderPass;
-            renderPassBeginInfo.framebuffer = frameBuffers[i];
-            renderPassBeginInfo.clearValueCount = 1;
-            renderPassBeginInfo.pClearValues = &clearColor;
-            renderPassBeginInfo.renderArea.offset = {0,0};
-            renderPassBeginInfo.renderArea.extent = {renderer.getWindow()->getWidth(),renderer.getWindow()->getHeight()};
-        }
-        vkCmdBeginRenderPass(commandBuffers[i],&renderPassBeginInfo,VK_SUBPASS_CONTENTS_INLINE);
-
-        vkCmdBindPipeline(commandBuffers[i],VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline);
-        vkCmdDraw(commandBuffers[i],3,1,0,0);
-
-        vkCmdEndRenderPass(commandBuffers[i]);
-        vkEndCommandBuffer(commandBuffers[i]);
-    }
+//        vkFreeCommandBuffers(renderer.getDevice(),commandPool,commandBuffers.size(),commandBuffers.data());
+        commandBuffers = createCommandBuffers(renderer,commandPool,frameBuffers);
+        beginCommandBuffers(renderer,commandBuffers,pipeline,renderPass,frameBuffers);
+    };
 
     auto imageAvailableSemaphore = createSemaphores(renderer);
     auto renderFinishedSemaphore = createSemaphores(renderer);
@@ -366,6 +389,8 @@ int main(int argc,char* argv[]) {
         render(renderer,commandBuffers,imageAvailableSemaphore,renderFinishedSemaphore);
         vkDeviceWaitIdle(renderer.getDevice());
     }
+
+    vkFreeCommandBuffers(renderer.getDevice(),commandPool,commandBuffers.size(),commandBuffers.data());
 
     vkDestroyCommandPool(renderer.getDevice(),commandPool, nullptr);
     for (auto frameBuffer : frameBuffers) {

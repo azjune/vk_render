@@ -44,6 +44,6 @@ endif()
 
 include_directories(${INCLUDES})
 ## Define the executable
-add_executable(${PROJECT_NAME} ${SRCS} main.cpp vk/v_window.cpp vk/v_window.h vk/v_platform.hpp vk/v_xcb_window.cpp vk/v_renderer.cpp vk/v_renderer.h vk/v_shader.cpp vk/v_shader.h)
+add_executable(${PROJECT_NAME} ${SRCS} Main.cpp VContext.cpp VContext.h)
 # target_include_directories(${PROJECT_NAME} ${INCLUDES})
 target_link_libraries(${PROJECT_NAME} ${LIBS})

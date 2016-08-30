@@ -24,7 +24,7 @@ void v_window::_initOSWindow() {
     int16_t x=0,y=0;
     value_mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
     value_list[0] = screen->black_pixel;
-    value_list[1] = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_KEY_RELEASE;
+    value_list[1] = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_STRUCTURE_NOTIFY;   //需要接收的事件
 
     xcb_create_window(_xcb_connection,
                       XCB_COPY_FROM_PARENT,
@@ -67,7 +67,7 @@ void v_window::_deInitOSWindow() {
 }
 
 void v_window::_updateOSWindow() {
-    auto event = xcb_poll_for_event(_xcb_connection);
+    xcb_generic_event_t* event = xcb_poll_for_event(_xcb_connection);   //非阻塞的方式接收事件 xcb_wait_for_event为阻塞式
     if(!event){
         return;
     }
@@ -75,6 +75,20 @@ void v_window::_updateOSWindow() {
         case XCB_CLIENT_MESSAGE:
             if( ( (xcb_client_message_event_t*)event )->data.data32[ 0 ] == _xcb_atom_window_reply->atom ) {
                 close();
+            }
+            break;
+        case XCB_CONFIGURE_NOTIFY:
+            if(xcb_configure_notify_event_t* cfg = (xcb_configure_notify_event_t*)event){
+                if(_width != cfg->width || _height != cfg->height) {
+                    _width = cfg->width;
+                    _height = cfg->height;
+                    vkDeviceWaitIdle(_renderer->getDevice());
+                    _initSwapchain();
+                    _initSwapchainImageViews();
+                    if (onResize != nullptr) {
+                        onResize(_width, _height);
+                    }
+                }
             }
             break;
         default:

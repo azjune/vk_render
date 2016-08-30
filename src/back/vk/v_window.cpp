@@ -12,11 +12,11 @@ v_window::v_window(v_renderer* renderer,uint32_t width, uint32_t height, const c
     _initOSWindow();
     _initSurface();
     _initSwapchain();
-    _initSwapchainImages();
+    _initSwapchainImageViews();
 }
 
 v_window::~v_window() {
-    _deInitSwapchainImages();
+    _deInitSwapchainImageViews();
     _deInitSwapchain();
     _deInitSurface();
     _deInitOSWindow();
@@ -37,6 +37,10 @@ void v_window::_deInitSurface() {
 }
 
 void v_window::_initSurface() {
+    if(_surface != VK_NULL_HANDLE){
+        _deInitSurface();
+    }
+
     _initOSSurface();
 
     auto gpu = _renderer->getPhysicalDevice();
@@ -44,10 +48,11 @@ void v_window::_initSurface() {
     vkGetPhysicalDeviceSurfaceSupportKHR(gpu,_renderer->getGraphicsFamilyIndex(),_surface,&WSI_support);
     assert(WSI_support && "WSI not support");
 
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gpu,_surface,&_surface_capabilities);
-    if(_surface_capabilities.currentExtent.width < UINT32_MAX){
-        _width = _surface_capabilities.currentExtent.width;
-        _height = _surface_capabilities.currentExtent.height;
+    VkSurfaceCapabilitiesKHR capabilities = {};
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gpu,_surface,&capabilities);
+    if(capabilities.currentExtent.width < UINT32_MAX){
+        _width = capabilities.currentExtent.width;
+        _height = capabilities.currentExtent.height;
     }
     {
         uint32_t format_count = 0;
@@ -64,16 +69,21 @@ void v_window::_initSurface() {
             _surface_format = formats[0];
         }
     }
+    {
+        if( _swapchain_image_count < capabilities.minImageCount + 1 ) _swapchain_image_count = capabilities.minImageCount + 1;
+        if( capabilities.maxImageCount > 0 ) {
+            if( _swapchain_image_count > capabilities.maxImageCount ) _swapchain_image_count = capabilities.maxImageCount;
+        }
+    }
 }
 
 void v_window::_initSwapchain() {
-    {
-        if( _swapchain_image_count < _surface_capabilities.minImageCount + 1 ) _swapchain_image_count = _surface_capabilities.minImageCount + 1;
-        if( _surface_capabilities.maxImageCount > 0 ) {
-            if( _swapchain_image_count > _surface_capabilities.maxImageCount ) _swapchain_image_count = _surface_capabilities.maxImageCount;
-        }
+    VkSurfaceCapabilitiesKHR capabilities = {};
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(_renderer->getPhysicalDevice(),_surface,&capabilities);
+    if(capabilities.currentExtent.width < UINT32_MAX){
+        _width = capabilities.currentExtent.width;
+        _height = capabilities.currentExtent.height;
     }
-
     VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
     {
         uint32_t present_mode_count = 0;
@@ -102,12 +112,20 @@ void v_window::_initSwapchain() {
         createInfo.compositeAlpha			= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         createInfo.presentMode				= present_mode;
         createInfo.clipped					= VK_TRUE;
-        createInfo.oldSwapchain				= VK_NULL_HANDLE;
+        createInfo.oldSwapchain				= _swapchain;
     }
-    vkCreateSwapchainKHR(_renderer->getDevice(),&createInfo, nullptr,&_swapchain);
-    assert(_swapchain && "create swapchain faild");
+    VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+    vkCreateSwapchainKHR(_renderer->getDevice(),&createInfo, nullptr,&swapchain);
+    assert(swapchain && "create swapchain faild");
 
+    if(_swapchain != VK_NULL_HANDLE){
+        vkDestroySwapchainKHR(_renderer->getDevice(),_swapchain, nullptr);
+    }
+
+    _swapchain = swapchain;
     vkGetSwapchainImagesKHR(_renderer->getDevice(),_swapchain,&_swapchain_image_count, nullptr);
+    _swapchain_images.resize(_swapchain_image_count);
+    vkGetSwapchainImagesKHR(_renderer->getDevice(),_swapchain,&_swapchain_image_count,_swapchain_images.data());
 }
 
 void v_window::_deInitSwapchain() {
@@ -115,11 +133,9 @@ void v_window::_deInitSwapchain() {
     _swapchain = VK_NULL_HANDLE;
 }
 
-void v_window::_initSwapchainImages() {
-    _swapchain_images.resize(_swapchain_image_count);
+void v_window::_initSwapchainImageViews() {
+    _deInitSwapchainImageViews();
     _swapchain_image_views.resize(_swapchain_image_count);
-
-    vkGetSwapchainImagesKHR(_renderer->getDevice(),_swapchain,&_swapchain_image_count,_swapchain_images.data());
     for( uint32_t i=0; i < _swapchain_image_count; ++i ) {
         VkImageViewCreateInfo image_view_create_info {};
         image_view_create_info.sType				                = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -140,9 +156,12 @@ void v_window::_initSwapchainImages() {
     }
 }
 
-void v_window::_deInitSwapchainImages() {
+void v_window::_deInitSwapchainImageViews() {
     for( auto view : _swapchain_image_views ) {
-        vkDestroyImageView( _renderer->getDevice(), view, nullptr );
+        if(view != VK_NULL_HANDLE){
+            vkDestroyImageView( _renderer->getDevice(), view, nullptr );
+            view = VK_NULL_HANDLE;
+        }
     }
 }
 
